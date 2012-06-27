@@ -20,14 +20,10 @@ ensembl = useMart("ensembl",dataset="mmusculus_gene_ensembl")
 - FDR of 0.2
 
 ```{r variables, cache=FALSE}
-dataDir <- "/n/scratch00/hsph/projects/wp_rna_seq/data/"
-resultsDir <- "/n/scratch00/hsph/projects/wp_rna_seq/results/tophataligns/ensembl/trimmed/"
-#dataDir <- "/n/Volumes/ody/scratch/projects/wp_rna_seq/data/"
-#resultsDir <- "/Volumes/ody/scratch/projects/wp_rna_seq/results/tophataligns/ensembl/trimmed/"
-
-
-samples <- c("LIB003615_TRA00004588_CGATGT_L005","LIB003615_TRA00004674_TGACCA_L005","LIB003615_TRA00004675_ACAGTG_L005","LIB003615_TRA00004676_GCCAAT_L005","LIB003615_TRA00004677_CAGATC_L005","LIB003615_TRA00004678_TAGCTT_L005","LIB003615_TRA00004679_CTTGTA_L005","LIB003616_TRA00004589_CGATGT_L006","LIB003616_TRA00004680_TGACCA_L006","LIB003616_TRA00004681_ACAGTG_L006","LIB003616_TRA00004682_GCCAAT_L006","LIB003616_TRA00004683_CAGATC_L006","LIB003616_TRA00004684_TAGCTT_L006","LIB003616_TRA00004685_CTTGTA_L006")
-pvalcutoff=0.2
+dataDir <- "/data/" #where 
+resultsDir <- "/results" #wehre the counts are stored
+samples <- c("foo1","foo2","foo3","foo4","foo5","foo6","foo7","foo8","foo9","foo10","foo11","foo12","foo13","foo14")
+pvalcutoff=0.1
 ```
 
 ```{r functions, cache=FALSE}
@@ -74,12 +70,12 @@ plotDE <- function(res, cutoffpval, samples ) {
 ```
 
 ## DATALOAD and PREP
-- HTseq counts were generated for individual genes (using the UCSC GTF annoation from iGenomes) from the Tophat aligments
-- covariates include genotype, treatment and RNA type
+- HTseq counts are generated for individual genes (using the UCSC GTF annoation from iGenomes) from Tophat aligments
+- covariates can include multiple factors, sample names in teh first column
 - processed and loaded all data into a DESeq CountDataSet
 
 ```{r dataload_and_reshape, cache=FALSE}
-covars <- read.table(paste(dataDir, "covars.desc", sep=""), header=T, row.names=5)
+covars <- read.table(paste(dataDir, "covars.desc", sep=""), header=T, row.names=1)
 covars$replicate.setname <- paste(covars[,1], covars[,2], covars[,3],sep="-")
 counts <- llply(samples, function(n) {
   read.table(paste(resultsDir, n, "/HTseq-counts.tab",sep="" ))
@@ -94,7 +90,7 @@ counts.ds <- newCountDataSet(counts, covars)
 
 ## NORMALIZATION
 - estimate library size adjustements and gene variances/dispersions for all samples
-- took the most conservative approach to reducing the variability of the dispersion estimates
+- takes the most conservative approach to reducing the variability of the dispersion estimates
 
 ```{r estimate_sizefactors, results='hide', cache=FALSE}
 counts.ds <- estimateSizeFactors(counts.ds)
@@ -113,8 +109,8 @@ counts.norm <- counts(counts.ds, normalized=TRUE)
 
 ```{r plotdispersions, cache=FALSE, fig.cap=""}
 plotDispEsts(counts.ds)
-#head(fData(counts.ds))
-#str(fitInfo(counts.ds))
+head(fData(counts.ds))
+str(fitInfo(counts.ds))
 ```
 **Figure 1 - Empirical and fitted dispersion values plotted against mean expression strength**
 
@@ -169,14 +165,14 @@ ggplot(data=replicate.counts.norm.melt, aes(x=mean, y=fc)) + geom_point(size=1, 
 
 ## ANALYSES
 - it is not possible to work with the entire dataset to calculate the library size adjustments and dispersions and then perform pairwise comparisons between samples as DESeq cannot transition between a multivariate, multisample mode to a pairwise mode
-- instead, for each pairwise analysis, I took the appropriate subset of the raw data and recalculated the size adjustments and dispersions for this subset
-- using this data, I performed independent filtering to eliminate genes that have no, or little chance of showing signicant evidence
+- instead, for each pairwise analysis, take  the appropriate subset of the raw data and recalculate the size adjustments and dispersions for this subset
+- using this data, perform independent filtering to eliminate genes that have no, or little chance of showing signicant evidence
   - this should result in increased detection power, in terms of false discovery rate.
-  - filtering was based on the sum of counts from all samples as below a certain number of samples, it is not possible to get a pvalue below a desired cutoff 
-    - here I discarded the genes in the bottom 40% of the distribution
+  - filtering is  based on the sum of counts from all samples as below a certain number of samples, it is not possible to get a pvalue below a desired cutoff 
+    - here you discard the genes in the bottom 40% of the distribution
 
 ```{r subset_pairwise_comparisons, cache=FALSE}
-setnames <- list(c("TNTTRAP-Band-TRAP", "TNTTRAP-Sham-TRAP"),c("TNTTRAP-Band-input", "TNTTRAP-Sham-input"), c("TNTTRAP-Sham-input","CAGTRAP-NoOp-input"), c("TNTTRAP-Band-input", "noTRAP-Band-input"), c("TNTTRAP-Sham-TRAP", "CAGTRAP-NoOp-TRAP"), c("CAGTRAP-NoOp-input", "CAGTRAP-NoOp-TRAP"))
+setnames <- list(c("foo1", "foo2"),c("foo3", "foo4"))
 sig.results <- llply(setnames, function(n) {
   n <- unlist(n)
   ## subset data, 
@@ -214,11 +210,7 @@ sig.results <- llply(setnames, function(n) {
 })     
 ```
 
-**6 pairwise comparisons in total**
-- the titles for each comparison show the: 
-  - mouse genotype (wildtype (noTRAP), cardiomyocyte specific TRAP transgene (TNTTRAP) and non tissue-specific TRAP transgene (CAGTRAP))
-  - treatment (band or Sham operation/No operation)
-  - RNA type (translating (TRAP) or whole RNA (input))
+**2 pairwise comparisons in total**
   
 - for each of these comparisons, significant genes which passed a 10% false discovery rate are highlighted
 - for each comparison, there are 3 ways to visualize these significant results
@@ -228,19 +220,15 @@ sig.results <- llply(setnames, function(n) {
 
 ---
 
-### TNTTRAP, band vs. Sham, Trap
-- experimental
-- cardiomyocyte specifc translating trancript level changes in response to banding
-- positive log2FoldChange values signify increased levels in the sham operation samples  
+### 1
 
 ```{r out1, fig.width=11, fig.height=6, out.width='.45\\textwidth', cache=FALSE}
 sig.results[[1]]$qqplots
 sig.results[[1]]$DEplots
 ```
-**Figure 4 - QQ and M-A plots highlighting changes in cardiomyocyte translating transcript levels after stress**  
-  
-  
-**Table 1 - Cardiomyocyte-specific translating transcripts showing significant (FDR<0.1) differences after stress** 
+**Figure 4 - title**  
+   
+**Table 1 - title** 
 ```{r tables1, results='asis', cache=FALSE}
 out1 <- xtable(sig.results[[1]]$results)
 print(out1, type='html',include.rownames=FALSE)
@@ -248,104 +236,17 @@ print(out1, type='html',include.rownames=FALSE)
 
 ---
 
-### TNTTRAP, band vs. Sham, input
-- experimental
-- whole RNA trancript level changes in response to banding
-- positive log2FoldChange values signify increased levels in the shame operation samples  
-
+### 2
 
 ```{r out2, fig.width=11, fig.height=6, out.width='.45\\textwidth', cache=FALSE}
 sig.results[[2]]$qqplots
 sig.results[[2]]$DEplots
 ```
-**Figure 5 - QQ and M-A plots highlighting changes in  whole RNA transcript levels after stress**  
+**Figure 5 - title**  
   
-  
-**Table 2 - Transcripts showing significant (FDR<0.1) differences after stress**
+**Table 2 - title**
 ```{r tables2, results='asis', cache=FALSE}
 out2 <- xtable(sig.results[[2]]$results)
 print(out2, type='html',include.rownames=FALSE)
 ```
-
----
-
-### TNTTRAP vs. CAGTRAP, Sham/NoOp, input
-- negative control
-- cardiomyocyte specifc TRAP genotype vs. non.specific TRAP genotype whole RNA trancript changes in absence of banding
-  - assumes that Sham and NoOp are comparable
-  - TRAP transgenes not expected to have any effect on transcript levels
-- positive log2FoldChange values signify increased levels in the CAGTRAP genotype samples 
-
-```{r out3, fig.width=11, fig.height=6, out.width='.45\\textwidth', cache=FALSE}
-sig.results[[3]]$qqplots
-sig.results[[3]]$DEplots
-```
-**Figure 6 - QQ and M-A plots highlighting differences in transgene effects on whole RNA transcript levels**  
-  
-  
-**Table 3 - Transcripts showing significant (FDR<0.1) differences in response to transgene type**
-```{r tables3, results='asis', cache=FALSE}
-out3 <- xtable(sig.results[[3]]$results)
-print(out3, type='html',include.rownames=FALSE)
-```
-
----
-
-### TNTTRAP vs. noTRAP, Band, input
-- negative control
-- cardiomyocyte specifc TRAP genotype vs. wildtype  whole RNA trancript changes in presence of banding
-  - TNTTRAP transgene not expected to have any effect on whole RNA transcript levels
-- positive log2FoldChange values signify increased levels in the noTRAP genotype samples 
-
-```{r out4, fig.width=11, fig.height=6, out.width='.45\\textwidth', cache=FALSE}
-sig.results[[4]]$qqplots
-sig.results[[4]]$DEplots
-```
-**Figure 7 - QQ and M-A plots highlighting differences in transgene presence on whole RNA transcript levels**  
-  
-  
-**Table 4 - Transcripts showing significant (FDR<0.1) differences in response to presence of transgene**
-```{r tables4, results='asis', cache=FALSE}
-out4 <- xtable(sig.results[[4]]$results)
-print(out4, type='html',include.rownames=FALSE)
-```
-
----
-
-### TNTTRAP vs. CAGTRAP, Sham/NoOp, TRAP
-- should identify cardiomyocyte specific translating RNAs
-- positive log2FoldChange values signify increased levels in the non-cardiomyocyte (CAGTRAP) samples
-
-```{r out5, fig.width=11, fig.height=6, out.width='.45\\textwidth', cache=FALSE}
-sig.results[[5]]$qqplots
-sig.results[[5]]$DEplots
-```
-**Figure 8 - QQ and M-A plots highlighting cardiomyocyte specific translating RNA transcripts**  
-  
-  
-**Table 5 - Translating transcripts showing significant (FDR<0.1) differences in cardiomyocytes as compared to all tissues**
-```{r tables5, results='asis', cache=FALSE}
-out5 <- xtable(sig.results[[5]]$results)
-print(out5, type='html',include.rownames=FALSE)
-```
-
----
-
-### CAGTRAP, NoOp, input vs. TRAP
-- should identify cardiomyocyte specific translationally regulated RNAs
-  - expect to find noncoding RNAs
-- positive log2FoldChange values signify increased levels of translating RNAs
-
-```{r out6, fig.width=11, fig.height=6, out.width='.45\\textwidth', cache=FALSE}
-sig.results[[6]]$qqplots
-sig.results[[6]]$DEplots
-```
-**Figure 8 - QQ and M-A plots highlighting non-translated transcripts**  
-  
-  
-**Table 6 - Transcripts showing significant (FDR<0.1) differences in their translating and non-translating levels**
-```{r tables6, results='asis', cache=FALSE}
-out6 <- xtable(sig.results[[6]]$results)
-print(out6, type='html',include.rownames=FALSE)
-```
-
+ Replicate this code for as many pairwise comparisons as you want. 
