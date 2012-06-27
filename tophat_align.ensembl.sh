@@ -4,8 +4,6 @@
 ###jnhutchinson
 ###bash script to run tophat alignments for WP-rna-seq
 
-###hard coded
-
 #basedataDir    ---untrimmed
 #               ---trimmed
 #resultsDir ---untrimmed
@@ -19,16 +17,16 @@
 ###VARIABLES
 #################################################################################
 
-basedataDir="/n/scratch00/hsph/projects/wp_rna_seq/data/fastq"
-alignDir="/n/scratch00/hsph/projects/wp_rna_seq/results/tophataligns/ensembl"
-tmpDir="/n/scratch00/hsph/tmp"
-queue="hsph"
-cores=7
-gap=150
-GTFfile="/n/scratch00/hsph/biodata/genomes/Mmusculus/mm9/iGenomes/Ensembl/NCBIM37/Annotation/Genes/genes.gtf"
-bowtiegenome="/n/scratch00/hsph/biodata/genomes/Mmusculus/mm9/iGenomes/Ensembl/NCBIM37/Sequence/BowtieIndex/genome"
-rRNAfile="/n/home08/jhutchin/resources/mouse_rRNA/mouse_all_rRNA.fasta"
-samplesuffix="fastq"
+basedataDir="directory with the fastq files"
+alignDir="directory to put the alignments in"
+tmpDir="temp directory for java"
+queue="lsf queue"
+cores=7 # # cores to use by tophat
+gap=150 # estimated gap length for tophat
+GTFfile="Ensembl based gtf file - gene annotations"
+bowtiegenome="directory and prefix of the bowtie genome .fa file i.e. foo/bar/genome, where genome.fa is the bowtie genome"
+rRNAfile="fasta file with the rRNA sequences"
+samplesuffix="fastq" # not needed here 
 trim_size=$1 #first base to keep -1
 
 samples="LIB003615_TRA00004588_CGATGT_L005
@@ -46,7 +44,10 @@ LIB003616_TRA00004683_CAGATC_L006
 LIB003616_TRA00004684_TAGCTT_L006
 LIB003616_TRA00004685_CTTGTA_L006"
 
-##to trim or not to trim-t
+##to trim or not to trim
+## these values will set the names of the subdirectories for the basedataDir and alignDir in which you will 1) find your fastq files 
+## and 2) where the results will be placed 
+
 if [ $trim_size -eq 0 ]
 then
     trimvarDir="untrimmed"
